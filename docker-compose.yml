@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: launchpad
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:8.0-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: bun run dev
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/launchpad
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: change-me
+      OPENAI_BASE_URL: https://api.openai.com/v1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LLM_MODEL: gpt-5-mini
+      EMBEDDING_MODEL: text-embedding-3-small
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - /app/.next
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: bun run worker
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/launchpad
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: change-me
+      OPENAI_BASE_URL: https://api.openai.com/v1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LLM_MODEL: gpt-5-mini
+      EMBEDDING_MODEL: text-embedding-3-small
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  redis_data:
