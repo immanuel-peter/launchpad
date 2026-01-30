@@ -18,6 +18,34 @@ services:
     ports:
       - "6379:6379"
 
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    restart: on-failure
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO...';
+      sleep 5;
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb local/launchpad || echo 'Bucket exists';
+      mc anonymous set download local/launchpad;
+      echo 'MinIO setup complete!';
+      "
+
   app:
     build:
       context: .
@@ -26,6 +54,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - minio
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/launchpad
       REDIS_URL: redis://redis:6379
@@ -35,12 +64,18 @@ services:
       LLM_MODEL: gpt-5-mini
       EMBEDDING_MODEL: text-embedding-3-small
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: http://localhost:9000/launchpad
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: launchpad
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
     ports:
       - "3000:3000"
     volumes:
       - ./:/app
       - /app/node_modules
-      - /app/.next
 
   worker:
     build:
@@ -50,6 +85,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - minio
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/launchpad
       REDIS_URL: redis://redis:6379
@@ -59,6 +95,13 @@ services:
       LLM_MODEL: gpt-5-mini
       EMBEDDING_MODEL: text-embedding-3-small
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: http://localhost:9000/launchpad
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: launchpad
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
     volumes:
       - ./:/app
       - /app/node_modules
@@ -66,3 +109,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:

@@ -50,6 +50,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
+  if (auth.role === "student") {
+    const { score, score_breakdown, ...rest } = record;
+    return NextResponse.json(rest);
+  }
+
   return NextResponse.json(record);
 }
 

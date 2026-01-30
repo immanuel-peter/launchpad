@@ -19,14 +19,26 @@ const serializeCompany = (company: typeof companies.$inferSelect) => ({
   updated_at: company.updatedAt,
 });
 
+const serializePublicCompany = (company: typeof companies.$inferSelect) => ({
+  id: company.id,
+  name: company.name,
+  description: company.description,
+  logo_url: company.logoUrl,
+  website: company.website,
+  industry: company.industry,
+  company_size: company.companySize,
+  location: company.location,
+  founded_year: company.foundedYear,
+});
+
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
-  if (!auth) {
-    return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
-  }
-
   const { id } = await context.params;
+  
   if (id === "me") {
+    if (!auth) {
+      return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
+    }
     const [company] = await db
       .select()
       .from(companies)
@@ -44,6 +56,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   if (!company) {
     return NextResponse.json({ message: "Company not found." }, { status: 404 });
+  }
+
+  // Return public version if not authenticated, full version if authenticated
+  if (!auth) {
+    return NextResponse.json(serializePublicCompany(company));
   }
 
   return NextResponse.json(serializeCompany(company));

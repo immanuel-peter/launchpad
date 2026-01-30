@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Building2, Save } from "lucide-react";
+import { Building2, Save, ExternalLink } from "lucide-react";
 
 interface Company {
   id: string;
@@ -118,10 +119,20 @@ const CompanyProfile = () => {
               Make your company stand out to potential candidates
             </p>
           </div>
-          <Button variant="hero" onClick={handleSave} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {company?.id && (
+              <Link href={`/companies/${company.id}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View Company
+                </Button>
+              </Link>
+            )}
+            <Button variant="hero" onClick={handleSave} disabled={saving}>
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
 
         {/* Company Logo */}

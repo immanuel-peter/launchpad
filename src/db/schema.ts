@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   pgEnum,
@@ -15,7 +16,6 @@ export const applicationStatusEnum = pgEnum("application_status", [
   "pending",
   "scoring",
   "reviewing",
-  "shortlisted",
   "accepted",
   "rejected",
 ]);
@@ -60,6 +60,16 @@ export const companies = pgTable("companies", {
   companySize: text("company_size"),
   location: text("location"),
   foundedYear: integer("founded_year"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const companyWorkflows = pgTable("company_workflows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  companyId: uuid("company_id").references(() => companies.id).notNull().unique(),
+  emailOnDecision: boolean("email_on_decision").default(false),
+  acceptanceEmailBody: text("acceptance_email_body"),
+  rejectionEmailBody: text("rejection_email_body"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

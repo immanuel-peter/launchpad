@@ -5,9 +5,13 @@ import { requireAuth } from "@/lib/auth/require";
 import { generateStudentEmbedding } from "@/lib/ai/embeddings";
 import { eq } from "drizzle-orm";
 
-const serializeStudentProfile = (profile: typeof studentProfiles.$inferSelect) => ({
+const serializeStudentProfile = (
+  profile: typeof studentProfiles.$inferSelect,
+  fullName: string | null,
+) => ({
   id: profile.id,
   user_id: profile.userId,
+  full_name: fullName,
   university: profile.university,
   major: profile.major,
   graduation_year: profile.graduationYear,
@@ -21,38 +25,64 @@ const serializeStudentProfile = (profile: typeof studentProfiles.$inferSelect) =
   updated_at: profile.updatedAt,
 });
 
+const serializePublicStudentProfile = (
+  profile: typeof studentProfiles.$inferSelect,
+  fullName: string | null,
+) => ({
+  id: profile.id,
+  full_name: fullName,
+  university: profile.university,
+  major: profile.major,
+  graduation_year: profile.graduationYear,
+  bio: profile.bio,
+  resume_url: profile.resumeUrl,
+});
+
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
-  if (!auth) {
-    return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
-  }
-
   const { id } = await context.params;
   if (id === "me") {
-    const [profile] = await db
-      .select()
+    if (!auth) {
+      return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
+    }
+
+    const [profileRow] = await db
+      .select({
+        student: studentProfiles,
+        full_name: profiles.fullName,
+      })
       .from(studentProfiles)
+      .leftJoin(profiles, eq(studentProfiles.userId, profiles.id))
       .where(eq(studentProfiles.userId, auth.sub));
-    if (!profile) {
+
+    if (!profileRow) {
       return NextResponse.json({ message: "Student profile not found." }, { status: 404 });
     }
-    return NextResponse.json(serializeStudentProfile(profile));
+    return NextResponse.json(serializeStudentProfile(profileRow.student, profileRow.full_name));
   }
 
-  const [profile] = await db
-    .select()
+  const [profileRow] = await db
+    .select({
+      student: studentProfiles,
+      full_name: profiles.fullName,
+    })
     .from(studentProfiles)
+    .leftJoin(profiles, eq(studentProfiles.userId, profiles.id))
     .where(eq(studentProfiles.id, id));
 
-  if (!profile) {
+  if (!profileRow) {
     return NextResponse.json({ message: "Student profile not found." }, { status: 404 });
   }
 
-  if (auth.role === "student" && profile.userId !== auth.sub) {
+  if (auth?.role === "student" && profileRow.student.userId !== auth.sub) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
-  return NextResponse.json(serializeStudentProfile(profile));
+  if (!auth) {
+    return NextResponse.json(serializePublicStudentProfile(profileRow.student, profileRow.full_name));
+  }
+
+  return NextResponse.json(serializeStudentProfile(profileRow.student, profileRow.full_name));
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -108,5 +138,5 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     .where(eq(studentProfiles.id, profile.id))
     .returning();
 
-  return NextResponse.json(serializeStudentProfile(updated));
+  return NextResponse.json(serializeStudentProfile(updated, userProfile?.fullName ?? null));
 }

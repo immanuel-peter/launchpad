@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 interface Application {
   id: string;
@@ -37,6 +38,12 @@ const AllApplications = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    applicationId: string | null;
+    nextStatus: "accepted" | "rejected" | null;
+  }>({ open: false, applicationId: null, nextStatus: null });
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -69,7 +76,7 @@ const AllApplications = () => {
 
   const handleStatusChange = async (
     applicationId: string,
-    newStatus: "pending" | "reviewing" | "shortlisted" | "accepted" | "rejected"
+    newStatus: "pending" | "reviewing" | "accepted" | "rejected"
   ) => {
     try {
       const response = await fetch(`/api/applications/${applicationId}`, {
@@ -85,9 +92,35 @@ const AllApplications = () => {
       );
 
       toast.success("Status updated");
+      return true;
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update status");
+      return false;
+    }
+  };
+
+  const closeConfirmation = () => {
+    setConfirmState({ open: false, applicationId: null, nextStatus: null });
+  };
+
+  const handleStatusSelect = (applicationId: string, newStatus: "pending" | "reviewing" | "accepted" | "rejected") => {
+    if (newStatus === "accepted" || newStatus === "rejected") {
+      setConfirmState({ open: true, applicationId, nextStatus: newStatus });
+      return;
+    }
+    handleStatusChange(applicationId, newStatus);
+  };
+
+  const handleConfirmDecision = async () => {
+    if (!confirmState.applicationId || !confirmState.nextStatus) {
+      return;
+    }
+    setConfirming(true);
+    const success = await handleStatusChange(confirmState.applicationId, confirmState.nextStatus);
+    setConfirming(false);
+    if (success) {
+      closeConfirmation();
     }
   };
 
@@ -98,8 +131,6 @@ const AllApplications = () => {
         return "bg-yellow-100 text-yellow-800";
       case "reviewing":
         return "bg-blue-100 text-blue-800";
-      case "shortlisted":
-        return "bg-green-100 text-green-800";
       case "accepted":
         return "bg-emerald-100 text-emerald-800";
       case "rejected":
@@ -136,7 +167,6 @@ const AllApplications = () => {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="reviewing">Reviewing</SelectItem>
-              <SelectItem value="shortlisted">Shortlisted</SelectItem>
               <SelectItem value="accepted">Accepted</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
@@ -145,7 +175,7 @@ const AllApplications = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {["all", "pending", "reviewing", "shortlisted", "accepted"].map((status) => {
+          {["all", "pending", "reviewing", "accepted", "rejected"].map((status) => {
             const count =
               status === "all"
                 ? applications.length
@@ -233,14 +263,13 @@ const AllApplications = () => {
                         (app.status === "scoring" ? "pending" : app.status) as
                           | "pending"
                           | "reviewing"
-                          | "shortlisted"
                           | "accepted"
                           | "rejected"
                       }
                       onValueChange={(value) =>
-                        handleStatusChange(
+                        handleStatusSelect(
                           app.id,
-                          value as "pending" | "reviewing" | "shortlisted" | "accepted" | "rejected"
+                          value as "pending" | "reviewing" | "accepted" | "rejected"
                         )
                       }
                     >
@@ -250,7 +279,6 @@ const AllApplications = () => {
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="reviewing">Reviewing</SelectItem>
-                        <SelectItem value="shortlisted">Shortlisted</SelectItem>
                         <SelectItem value="accepted">Accepted</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
@@ -262,6 +290,24 @@ const AllApplications = () => {
           </div>
         )}
       </div>
+      <ConfirmationDialog
+        open={confirmState.open}
+        onOpenChange={(open) => (open ? setConfirmState((prev) => ({ ...prev, open })) : closeConfirmation())}
+        title={
+          confirmState.nextStatus === "accepted"
+            ? "Accept candidate?"
+            : "Reject candidate?"
+        }
+        description={
+          confirmState.nextStatus === "accepted"
+            ? "Are you sure you want to accept this candidate for the role?"
+            : "Are you sure you want to reject this candidate for the role?"
+        }
+        confirmLabel={confirmState.nextStatus === "accepted" ? "Accept" : "Reject"}
+        confirmVariant={confirmState.nextStatus === "accepted" ? "default" : "destructive"}
+        onConfirm={handleConfirmDecision}
+        confirmDisabled={confirming}
+      />
     </DashboardLayout>
   );
 };

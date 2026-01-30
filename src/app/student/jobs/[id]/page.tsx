@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -165,7 +166,20 @@ const JobDetail = () => {
               </div>
               <div className="flex-1">
                 <h1 className="font-display text-3xl font-bold mb-2">{job.title}</h1>
-                <p className="text-xl text-muted-foreground mb-4">{job.company?.name}</p>
+                <div className="flex items-center gap-3 mb-4">
+                  <p className="text-xl text-muted-foreground">{job.company?.name}</p>
+                  {job.company?.id && (
+                    <Link
+                      href={`/companies/${job.company.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Building2 className="w-4 h-4" />
+                      View Company
+                    </Link>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap gap-4">
                   {job.location_type && (
@@ -302,16 +316,29 @@ const JobDetail = () => {
                     <ReactMarkdown>{job.company.description}</ReactMarkdown>
                   </div>
                   {job.company.industry && <Badge variant="secondary">{job.company.industry}</Badge>}
-                  {job.company.website && (
-                    <a
-                      href={job.company.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block mt-4 text-sm text-primary hover:underline"
-                    >
-                      Visit Website →
-                    </a>
-                  )}
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    {job.company.id && (
+                      <Link
+                        href={`/companies/${job.company.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Building2 className="w-4 h-4" />
+                        View Company Profile
+                      </Link>
+                    )}
+                    {job.company.website && (
+                      <a
+                        href={job.company.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Visit Website →
+                      </a>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}

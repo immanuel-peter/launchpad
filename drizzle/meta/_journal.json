@@ -8,6 +8,20 @@
       "when": 1730000000000,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "1",
+      "when": 1769650000000,
+      "tag": "0001_remove_shortlisted",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "1",
+      "when": 1769650500000,
+      "tag": "0002_company_workflows",
+      "breakpoints": true
     }
   ]
 }

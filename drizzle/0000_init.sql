@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Enums
 CREATE TYPE public.user_role AS ENUM ('student', 'startup');
-CREATE TYPE public.application_status AS ENUM ('pending', 'scoring', 'reviewing', 'shortlisted', 'accepted', 'rejected');
+CREATE TYPE public.application_status AS ENUM ('pending', 'scoring', 'reviewing', 'accepted', 'rejected');
 CREATE TYPE public.job_status AS ENUM ('draft', 'open', 'closed', 'filled');
 
 -- Profiles
@@ -49,6 +49,17 @@ CREATE TABLE public.companies (
   company_size TEXT,
   location TEXT,
   founded_year INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Company Workflows
+CREATE TABLE public.company_workflows (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL UNIQUE REFERENCES public.companies(id) ON DELETE CASCADE,
+  email_on_decision BOOLEAN DEFAULT FALSE,
+  acceptance_email_body TEXT,
+  rejection_email_body TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

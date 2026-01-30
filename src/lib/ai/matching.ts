@@ -48,7 +48,12 @@ export async function getMatchedJobsForUser(userId: string) {
   const skillList = studentProfile.skills ?? [];
   const vector = vectorLiteral(studentProfile.embedding);
 
-  const result = await db.execute(sql`
+  // Create a PostgreSQL array literal for skills - escape single quotes
+  const skillsArrayLiteral = skillList.length > 0 
+    ? `ARRAY[${skillList.map(s => `'${s.replace(/'/g, "''")}'`).join(',')}]`
+    : `ARRAY[]::text[]`;
+
+  const result = await db.execute(sql.raw(`
     SELECT
       j.id,
       j.title,
@@ -63,11 +68,11 @@ export async function getMatchedJobsForUser(userId: string) {
       c.name AS company_name,
       c.logo_url AS company_logo_url,
       c.industry AS company_industry,
-      1 - (j.embedding <=> ${vector}::vector) AS similarity,
+      1 - (j.embedding <=> '${vector}'::vector) AS similarity,
       array_length(
         array(
           SELECT unnest(COALESCE(j.skills_required, '{}')) 
-          INTERSECT SELECT unnest(${skillList})
+          INTERSECT SELECT unnest(${skillsArrayLiteral})
         ),
         1
       ) AS skills_overlap
@@ -75,9 +80,10 @@ export async function getMatchedJobsForUser(userId: string) {
     JOIN companies c ON c.id = j.company_id
     WHERE j.status = 'open'
     ORDER BY similarity DESC NULLS LAST, skills_overlap DESC NULLS LAST
-  `);
+  `));
 
-  return (result.rows as Array<Record<string, unknown>>).map((row) => ({
+  // postgres-js returns rows directly as an array, not wrapped in .rows
+  return (result as Array<Record<string, unknown>>).map((row) => ({
     id: row.id,
     title: row.title,
     description: row.description,

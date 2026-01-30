@@ -16,6 +16,7 @@ import {
   Users,
   Plus,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { href: "/startup/jobs", label: "My Postings", icon: Briefcase },
     { href: "/startup/applications", label: "Applications", icon: Users },
     { href: "/startup/company", label: "Company Profile", icon: Building2 },
+    { href: "/startup/workflows", label: "Workflows", icon: Settings },
   ];
 
   const links = isStartup ? startupLinks : studentLinks;

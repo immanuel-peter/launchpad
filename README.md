@@ -14,7 +14,7 @@ An AI-powered platform that connects students with startups for micro-internship
 - **Job Posting Management**: Create and manage job postings with markdown support for rich descriptions
 - **AI Application Scoring**: Automatically receive compatibility scores and reasoning for each applicant
 - **Candidate Review**: Browse applications with collapsible candidate cards for efficient review
-- **Application Management**: Update application statuses (pending, reviewing, shortlisted, accepted, rejected)
+- **Application Management**: Update application statuses (pending, reviewing, accepted, rejected)
 
 ### AI Capabilities
 - **Semantic Matching**: Uses OpenAI embeddings (text-embedding-3-small) for semantic similarity matching

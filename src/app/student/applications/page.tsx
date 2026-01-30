@@ -5,20 +5,13 @@ import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Building2, Calendar, Star } from "lucide-react";
+import { FileText, Building2, Calendar } from "lucide-react";
 
 interface Application {
   id: string;
   status: string;
   applied_at: string;
   cover_letter: string | null;
-  score: number | null;
-  score_breakdown?: {
-    skillsMatch?: { score: number; reasoning: string };
-    experienceFit?: { score: number; reasoning: string };
-    educationMatch?: { score: number; reasoning: string };
-    overallRecommendation?: string;
-  };
   job: {
     id: string;
     title: string;
@@ -69,8 +62,6 @@ const StudentApplications = () => {
         return "bg-yellow-100 text-yellow-800";
       case "reviewing":
         return "bg-blue-100 text-blue-800";
-      case "shortlisted":
-        return "bg-green-100 text-green-800";
       case "accepted":
         return "bg-emerald-100 text-emerald-800";
       case "rejected":
@@ -78,13 +69,6 @@ const StudentApplications = () => {
       default:
         return "bg-muted text-muted-foreground";
     }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600 bg-green-100";
-    if (score >= 60) return "text-yellow-600 bg-yellow-100";
-    if (score >= 40) return "text-orange-600 bg-orange-100";
-    return "text-red-600 bg-red-100";
   };
 
   const formatDate = (date: string) => {
@@ -165,55 +149,6 @@ const StudentApplications = () => {
                       </div>
                     </div>
                   </div>
-
-                  {typeof app.score === "number" && (
-                    <div className="flex items-center gap-2">
-                      <span className={`flex items-center gap-1 px-3 py-1 rounded-full font-semibold ${getScoreColor(app.score)}`}>
-                        <Star className="w-4 h-4" />
-                        {app.score}%
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        AI match score with reasoning below
-                      </span>
-                    </div>
-                  )}
-
-                  {app.score_breakdown && (
-                    <div className="bg-muted/40 rounded-lg p-4 space-y-3 text-sm">
-                      {app.score_breakdown.skillsMatch && (
-                        <div>
-                          <p className="font-medium">Skills Match</p>
-                          <p className="text-muted-foreground">
-                            {app.score_breakdown.skillsMatch.reasoning}
-                          </p>
-                        </div>
-                      )}
-                      {app.score_breakdown.experienceFit && (
-                        <div>
-                          <p className="font-medium">Experience Fit</p>
-                          <p className="text-muted-foreground">
-                            {app.score_breakdown.experienceFit.reasoning}
-                          </p>
-                        </div>
-                      )}
-                      {app.score_breakdown.educationMatch && (
-                        <div>
-                          <p className="font-medium">Education Match</p>
-                          <p className="text-muted-foreground">
-                            {app.score_breakdown.educationMatch.reasoning}
-                          </p>
-                        </div>
-                      )}
-                      {app.score_breakdown.overallRecommendation && (
-                        <div>
-                          <p className="font-medium">Overall Recommendation</p>
-                          <p className="text-muted-foreground">
-                            {app.score_breakdown.overallRecommendation}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {app.cover_letter && (
                     <div className="pt-4 border-t border-border">

@@ -154,7 +154,21 @@ const StudentJobs = () => {
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                         <div>
                           <h3 className="font-display text-xl font-semibold mb-1">{job.title}</h3>
-                          <p className="text-muted-foreground">{job.company?.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-muted-foreground">{job.company?.name}</p>
+                            {job.company?.id && (
+                              <Link
+                                href={`/companies/${job.company.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Building2 className="w-3 h-3" />
+                                View Company
+                              </Link>
+                            )}
+                          </div>
                         </div>
                         {appliedJobIds.includes(job.id) ? (
                           <Badge className="bg-green-100 text-green-800 self-start">Applied</Badge>

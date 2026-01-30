@@ -27,8 +27,6 @@ export async function GET() {
         status: applications.status,
         applied_at: applications.appliedAt,
         cover_letter: applications.coverLetter,
-        score: applications.score,
-        score_breakdown: applications.scoreBreakdown,
         job: {
           id: jobs.id,
           title: jobs.title,

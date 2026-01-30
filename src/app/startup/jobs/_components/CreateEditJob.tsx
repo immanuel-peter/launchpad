@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, X, Plus, Save } from "lucide-react";
+import { ArrowLeft, X, Plus, Save, Sparkles } from "lucide-react";
 
 interface CreateEditJobProps {
   jobId?: string;
@@ -36,6 +36,9 @@ const CreateEditJob = ({ jobId }: CreateEditJobProps) => {
   const [skills, setSkills] = useState<string[]>([]);
   const [newRequirement, setNewRequirement] = useState("");
   const [newSkill, setNewSkill] = useState("");
+  const [enhancingDescription, setEnhancingDescription] = useState(false);
+  const [parsingRequirements, setParsingRequirements] = useState(false);
+  const [parsingSkills, setParsingSkills] = useState(false);
 
   useEffect(() => {
     fetchCompany();
@@ -94,6 +97,21 @@ const CreateEditJob = ({ jobId }: CreateEditJobProps) => {
     setRequirements(requirements.filter((_, i) => i !== idx));
   };
 
+  const mergeUnique = (base: string[], incoming: string[]) => {
+    const seen = new Set(base.map((item) => item.toLowerCase()));
+    const merged = [...base];
+    for (const item of incoming) {
+      const normalized = item.trim();
+      if (!normalized) continue;
+      const key = normalized.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(normalized);
+      }
+    }
+    return merged;
+  };
+
   const handleAddSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
       setSkills([...skills, newSkill.trim()]);
@@ -103,6 +121,97 @@ const CreateEditJob = ({ jobId }: CreateEditJobProps) => {
 
   const handleRemoveSkill = (skill: string) => {
     setSkills(skills.filter((s) => s !== skill));
+  };
+
+  const handleParseRequirements = async () => {
+    if (!description.trim()) {
+      toast.error("Add a job description first");
+      return;
+    }
+
+    setParsingRequirements(true);
+    try {
+      const response = await fetch("/api/jobs/parse-requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to parse requirements" }));
+        throw new Error(error.message || "Failed to parse requirements");
+      }
+      const data = (await response.json()) as { requirements: string[] };
+      setRequirements(mergeUnique(requirements, data.requirements || []));
+      toast.success("Requirements updated from description");
+    } catch (error) {
+      console.error("Error parsing requirements:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to parse requirements");
+    } finally {
+      setParsingRequirements(false);
+    }
+  };
+
+  const handleParseSkills = async () => {
+    if (!description.trim()) {
+      toast.error("Add a job description first");
+      return;
+    }
+
+    setParsingSkills(true);
+    try {
+      const response = await fetch("/api/jobs/parse-skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to parse skills" }));
+        throw new Error(error.message || "Failed to parse skills");
+      }
+      const data = (await response.json()) as { skills: string[] };
+      setSkills(mergeUnique(skills, data.skills || []));
+      toast.success("Required skills updated from description");
+    } catch (error) {
+      console.error("Error parsing skills:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to parse skills");
+    } finally {
+      setParsingSkills(false);
+    }
+  };
+
+  const handleEnhanceDescription = async () => {
+    if (!title.trim() || !description.trim()) {
+      toast.error("Add a job title and description first");
+      return;
+    }
+
+    setEnhancingDescription(true);
+    try {
+      const response = await fetch("/api/jobs/enhance-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_title: title.trim(),
+          description: description.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to enhance description" }));
+        throw new Error(error.message || "Failed to enhance description");
+      }
+
+      const data = (await response.json()) as { description?: string };
+      if (data.description) {
+        setDescription(data.description);
+        toast.success("Job description enhanced!");
+      }
+    } catch (error) {
+      console.error("Error enhancing description:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to enhance description");
+    } finally {
+      setEnhancingDescription(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -207,7 +316,18 @@ const CreateEditJob = ({ jobId }: CreateEditJobProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="description">Description *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleEnhanceDescription}
+                    disabled={!title.trim() || !description.trim() || enhancingDescription}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </Button>
+                </div>
                 <Textarea
                   id="description"
                   value={description}
@@ -266,9 +386,21 @@ const CreateEditJob = ({ jobId }: CreateEditJobProps) => {
 
           {/* Requirements */}
           <Card className="border-0 shadow-md">
-            <CardHeader>
-              <CardTitle className="font-display">Requirements</CardTitle>
-              <CardDescription>What you're looking for in candidates</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="font-display">Requirements</CardTitle>
+                <CardDescription>What you're looking for in candidates</CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleParseRequirements}
+                disabled={!description.trim() || parsingRequirements}
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {parsingRequirements ? "Parsing..." : "Parse Description"}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
@@ -303,9 +435,21 @@ const CreateEditJob = ({ jobId }: CreateEditJobProps) => {
 
           {/* Skills */}
           <Card className="border-0 shadow-md">
-            <CardHeader>
-              <CardTitle className="font-display">Required Skills</CardTitle>
-              <CardDescription>Technical and soft skills needed</CardDescription>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="font-display">Required Skills</CardTitle>
+                <CardDescription>Technical and soft skills needed</CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleParseSkills}
+                disabled={!description.trim() || parsingSkills}
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {parsingSkills ? "Parsing..." : "Parse Description"}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">

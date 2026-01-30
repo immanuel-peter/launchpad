@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 interface Application {
   id: string;
@@ -58,6 +60,12 @@ const JobApplications = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedApps, setExpandedApps] = useState<Set<string>>(new Set());
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    applicationId: string | null;
+    nextStatus: "accepted" | "rejected" | null;
+  }>({ open: false, applicationId: null, nextStatus: null });
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     fetchJobAndApplications();
@@ -94,7 +102,7 @@ const JobApplications = () => {
 
   const handleStatusChange = async (
     applicationId: string,
-    newStatus: "pending" | "reviewing" | "shortlisted" | "accepted" | "rejected"
+    newStatus: "pending" | "reviewing" | "accepted" | "rejected"
   ) => {
     try {
       const response = await fetch(`/api/applications/${applicationId}`, {
@@ -110,9 +118,35 @@ const JobApplications = () => {
       );
 
       toast.success("Application status updated");
+      return true;
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update status");
+      return false;
+    }
+  };
+
+  const closeConfirmation = () => {
+    setConfirmState({ open: false, applicationId: null, nextStatus: null });
+  };
+
+  const handleStatusSelect = (applicationId: string, newStatus: "pending" | "reviewing" | "accepted" | "rejected") => {
+    if (newStatus === "accepted" || newStatus === "rejected") {
+      setConfirmState({ open: true, applicationId, nextStatus: newStatus });
+      return;
+    }
+    handleStatusChange(applicationId, newStatus);
+  };
+
+  const handleConfirmDecision = async () => {
+    if (!confirmState.applicationId || !confirmState.nextStatus) {
+      return;
+    }
+    setConfirming(true);
+    const success = await handleStatusChange(confirmState.applicationId, confirmState.nextStatus);
+    setConfirming(false);
+    if (success) {
+      closeConfirmation();
     }
   };
 
@@ -123,8 +157,6 @@ const JobApplications = () => {
         return "bg-yellow-100 text-yellow-800";
       case "reviewing":
         return "bg-blue-100 text-blue-800";
-      case "shortlisted":
-        return "bg-green-100 text-green-800";
       case "accepted":
         return "bg-emerald-100 text-emerald-800";
       case "rejected":
@@ -250,14 +282,13 @@ const JobApplications = () => {
                                     (app.status === "scoring" ? "pending" : app.status) as
                                       | "pending"
                                       | "reviewing"
-                                      | "shortlisted"
                                       | "accepted"
                                       | "rejected"
                                   }
                                   onValueChange={(value) =>
-                                    handleStatusChange(
+                                    handleStatusSelect(
                                       app.id,
-                                      value as "pending" | "reviewing" | "shortlisted" | "accepted" | "rejected"
+                                      value as "pending" | "reviewing" | "accepted" | "rejected"
                                     )
                                   }
                                 >
@@ -267,7 +298,6 @@ const JobApplications = () => {
                                   <SelectContent>
                                     <SelectItem value="pending">Pending</SelectItem>
                                     <SelectItem value="reviewing">Reviewing</SelectItem>
-                                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
                                     <SelectItem value="accepted">Accepted</SelectItem>
                                     <SelectItem value="rejected">Rejected</SelectItem>
                                   </SelectContent>
@@ -360,6 +390,17 @@ const JobApplications = () => {
 
                             {/* Links & Actions */}
                             <div className="flex flex-wrap items-center gap-3">
+                              {app.student?.id && (
+                                <Link
+                                  href={`/students/${app.student.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  View Launchpad
+                                </Link>
+                              )}
                               <a
                                 href={`mailto:${app.student?.user?.email}`}
                                 className="flex items-center gap-1.5 text-sm text-primary hover:underline"
@@ -416,6 +457,20 @@ const JobApplications = () => {
           </div>
         )}
       </div>
+      <ConfirmationDialog
+        open={confirmState.open}
+        onOpenChange={(open) => (open ? setConfirmState((prev) => ({ ...prev, open })) : closeConfirmation())}
+        title={confirmState.nextStatus === "accepted" ? "Accept candidate?" : "Reject candidate?"}
+        description={
+          confirmState.nextStatus === "accepted"
+            ? "Are you sure you want to accept this candidate for the role?"
+            : "Are you sure you want to reject this candidate for the role?"
+        }
+        confirmLabel={confirmState.nextStatus === "accepted" ? "Accept" : "Reject"}
+        confirmVariant={confirmState.nextStatus === "accepted" ? "default" : "destructive"}
+        onConfirm={handleConfirmDecision}
+        confirmDisabled={confirming}
+      />
     </DashboardLayout>
   );
 };

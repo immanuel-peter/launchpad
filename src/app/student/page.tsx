@@ -36,7 +36,7 @@ const StudentDashboard = () => {
   const { profile } = useAuth();
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, shortlisted: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +61,7 @@ const StudentDashboard = () => {
         setStats({
           total: apps.length,
           pending: apps.filter((a) => a.status === "pending" || a.status === "scoring").length,
-          shortlisted: apps.filter((a) => a.status === "shortlisted").length,
+          accepted: apps.filter((a) => a.status === "accepted").length,
         });
       }
     } catch (error) {
@@ -78,8 +78,6 @@ const StudentDashboard = () => {
         return "bg-yellow-100 text-yellow-800";
       case "reviewing":
         return "bg-blue-100 text-blue-800";
-      case "shortlisted":
-        return "bg-green-100 text-green-800";
       case "accepted":
         return "bg-emerald-100 text-emerald-800";
       case "rejected":
@@ -135,8 +133,8 @@ const StudentDashboard = () => {
                   <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.shortlisted}</p>
-                  <p className="text-sm text-muted-foreground">Shortlisted</p>
+                  <p className="text-2xl font-bold">{stats.accepted}</p>
+                  <p className="text-sm text-muted-foreground">Accepted</p>
                 </div>
               </div>
             </CardContent>
