@@ -21,26 +21,37 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    const results = await db
+    const rows = await db
       .select({
         id: applications.id,
         status: applications.status,
         applied_at: applications.appliedAt,
         cover_letter: applications.coverLetter,
-        job: {
-          id: jobs.id,
-          title: jobs.title,
-          company: {
-            name: companies.name,
-            logo_url: companies.logoUrl,
-          },
-        },
+        job_id: jobs.id,
+        job_title: jobs.title,
+        company_name: companies.name,
+        company_logo_url: companies.logoUrl,
       })
       .from(applications)
       .leftJoin(jobs, eq(applications.jobId, jobs.id))
       .leftJoin(companies, eq(jobs.companyId, companies.id))
       .where(eq(applications.studentId, studentProfile.id))
       .orderBy(desc(applications.appliedAt));
+
+    const results = rows.map(row => ({
+      id: row.id,
+      status: row.status,
+      applied_at: row.applied_at,
+      cover_letter: row.cover_letter,
+      job: {
+        id: row.job_id,
+        title: row.job_title,
+        company: {
+          name: row.company_name,
+          logo_url: row.company_logo_url,
+        },
+      },
+    }));
 
     return NextResponse.json(results);
   }
@@ -50,25 +61,19 @@ export async function GET() {
     return NextResponse.json([]);
   }
 
-  const results = await db
+  const rows = await db
     .select({
       id: applications.id,
       status: applications.status,
       applied_at: applications.appliedAt,
       score: applications.score,
       score_breakdown: applications.scoreBreakdown,
-      job: {
-        id: jobs.id,
-        title: jobs.title,
-      },
-      student: {
-        id: studentProfiles.id,
-        university: studentProfiles.university,
-        user: {
-          full_name: profiles.fullName,
-          email: profiles.email,
-        },
-      },
+      job_id: jobs.id,
+      job_title: jobs.title,
+      student_id: studentProfiles.id,
+      student_university: studentProfiles.university,
+      user_full_name: profiles.fullName,
+      user_email: profiles.email,
     })
     .from(applications)
     .leftJoin(jobs, eq(applications.jobId, jobs.id))
@@ -77,6 +82,26 @@ export async function GET() {
     .leftJoin(profiles, eq(studentProfiles.userId, profiles.id))
     .where(eq(companies.id, company.id))
     .orderBy(desc(applications.appliedAt));
+
+  const results = rows.map(row => ({
+    id: row.id,
+    status: row.status,
+    applied_at: row.applied_at,
+    score: row.score,
+    score_breakdown: row.score_breakdown,
+    job: {
+      id: row.job_id,
+      title: row.job_title,
+    },
+    student: {
+      id: row.student_id,
+      university: row.student_university,
+      user: {
+        full_name: row.user_full_name,
+        email: row.user_email,
+      },
+    },
+  }));
 
   return NextResponse.json(results);
 }

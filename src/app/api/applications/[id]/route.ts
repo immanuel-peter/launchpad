@@ -11,25 +11,19 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   }
 
   const { id } = await context.params;
-  const [record] = await db
+  const [row] = await db
     .select({
       id: applications.id,
       status: applications.status,
       score: applications.score,
       score_breakdown: applications.scoreBreakdown,
       applied_at: applications.appliedAt,
-      job: {
-        id: jobs.id,
-        title: jobs.title,
-        company: {
-          id: companies.id,
-          name: companies.name,
-        },
-      },
-      student: {
-        id: studentProfiles.id,
-        user_id: studentProfiles.userId,
-      },
+      job_id: jobs.id,
+      job_title: jobs.title,
+      company_id: companies.id,
+      company_name: companies.name,
+      student_id: studentProfiles.id,
+      student_user_id: studentProfiles.userId,
       company_owner: companies.userId,
     })
     .from(applications)
@@ -38,17 +32,37 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     .leftJoin(studentProfiles, eq(applications.studentId, studentProfiles.id))
     .where(eq(applications.id, id));
 
-  if (!record) {
+  if (!row) {
     return NextResponse.json({ message: "Application not found." }, { status: 404 });
   }
 
-  if (auth.role === "student" && record.student?.user_id !== auth.sub) {
+  if (auth.role === "student" && row.student_user_id !== auth.sub) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
-  if (auth.role === "startup" && record.company_owner !== auth.sub) {
+  if (auth.role === "startup" && row.company_owner !== auth.sub) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
+
+  const record = {
+    id: row.id,
+    status: row.status,
+    score: row.score,
+    score_breakdown: row.score_breakdown,
+    applied_at: row.applied_at,
+    job: {
+      id: row.job_id,
+      title: row.job_title,
+      company: {
+        id: row.company_id,
+        name: row.company_name,
+      },
+    },
+    student: {
+      id: row.student_id,
+      user_id: row.student_user_id,
+    },
+  };
 
   if (auth.role === "student") {
     const { score, score_breakdown, ...rest } = record;
@@ -65,10 +79,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   const body = await request.json();
-  const status = body.status as string | undefined;
+  const status = body.status as "pending" | "scoring" | "reviewing" | "accepted" | "rejected" | undefined;
 
   if (!status) {
     return NextResponse.json({ message: "Status is required." }, { status: 400 });
+  }
+
+  const validStatuses: Array<"pending" | "scoring" | "reviewing" | "accepted" | "rejected"> = [
+    "pending",
+    "scoring",
+    "reviewing",
+    "accepted",
+    "rejected",
+  ];
+
+  if (!validStatuses.includes(status)) {
+    return NextResponse.json({ message: "Invalid status." }, { status: 400 });
   }
 
   const { id } = await context.params;

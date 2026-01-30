@@ -33,7 +33,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
-  const results = await db
+  const rows = await db
     .select({
       id: applications.id,
       status: applications.status,
@@ -41,27 +41,47 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       score_breakdown: applications.scoreBreakdown,
       cover_letter: applications.coverLetter,
       applied_at: applications.appliedAt,
-      student: {
-        id: studentProfiles.id,
-        bio: studentProfiles.bio,
-        university: studentProfiles.university,
-        major: studentProfiles.major,
-        graduation_year: studentProfiles.graduationYear,
-        skills: studentProfiles.skills,
-        linkedin_url: studentProfiles.linkedinUrl,
-        github_url: studentProfiles.githubUrl,
-        portfolio_url: studentProfiles.portfolioUrl,
-        user: {
-          full_name: profiles.fullName,
-          email: profiles.email,
-        },
-      },
+      student_id: studentProfiles.id,
+      student_bio: studentProfiles.bio,
+      student_university: studentProfiles.university,
+      student_major: studentProfiles.major,
+      student_graduation_year: studentProfiles.graduationYear,
+      student_skills: studentProfiles.skills,
+      student_linkedin_url: studentProfiles.linkedinUrl,
+      student_github_url: studentProfiles.githubUrl,
+      student_portfolio_url: studentProfiles.portfolioUrl,
+      user_full_name: profiles.fullName,
+      user_email: profiles.email,
     })
     .from(applications)
     .leftJoin(studentProfiles, eq(applications.studentId, studentProfiles.id))
     .leftJoin(profiles, eq(studentProfiles.userId, profiles.id))
     .where(eq(applications.jobId, job.id))
     .orderBy(desc(applications.score));
+
+  const results = rows.map(row => ({
+    id: row.id,
+    status: row.status,
+    score: row.score,
+    score_breakdown: row.score_breakdown,
+    cover_letter: row.cover_letter,
+    applied_at: row.applied_at,
+    student: {
+      id: row.student_id,
+      bio: row.student_bio,
+      university: row.student_university,
+      major: row.student_major,
+      graduation_year: row.student_graduation_year,
+      skills: row.student_skills,
+      linkedin_url: row.student_linkedin_url,
+      github_url: row.student_github_url,
+      portfolio_url: row.student_portfolio_url,
+      user: {
+        full_name: row.user_full_name,
+        email: row.user_email,
+      },
+    },
+  }));
 
   return NextResponse.json({ job: { id: job.id, title: job.title }, applications: results });
 }

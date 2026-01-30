@@ -7,6 +7,9 @@ import { parseResumeSkills } from "@/lib/ai/parsing";
 import { parsePdf } from "@/lib/pdf-parser";
 import { eq } from "drizzle-orm";
 
+// Force Node.js runtime for PDF parsing (uses child processes)
+export const runtime = 'nodejs';
+
 async function getProfile(authUserId: string, paramId: string) {
   const [profile] =
     paramId === "me"

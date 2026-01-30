@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const results = await db
+  const rows = await db
     .select({
       id: jobs.id,
       title: jobs.title,
@@ -75,17 +75,33 @@ export async function GET(request: Request) {
       location_type: jobs.locationType,
       location: jobs.location,
       created_at: jobs.createdAt,
-      company: {
-        id: companies.id,
-        name: companies.name,
-        logo_url: companies.logoUrl,
-        industry: companies.industry,
-      },
+      company_id: companies.id,
+      company_name: companies.name,
+      company_logo_url: companies.logoUrl,
+      company_industry: companies.industry,
     })
     .from(jobs)
     .leftJoin(companies, eq(jobs.companyId, companies.id))
     .where(eq(jobs.status, "open"))
     .orderBy(desc(jobs.createdAt));
+
+  const results = rows.map(row => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    skills_required: row.skills_required,
+    duration: row.duration,
+    compensation: row.compensation,
+    location_type: row.location_type,
+    location: row.location,
+    created_at: row.created_at,
+    company: {
+      id: row.company_id,
+      name: row.company_name,
+      logo_url: row.company_logo_url,
+      industry: row.company_industry,
+    },
+  }));
 
   return NextResponse.json(results);
 }

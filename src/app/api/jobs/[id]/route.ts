@@ -24,7 +24,7 @@ const serializeJob = (job: typeof jobs.$inferSelect) => ({
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const [job] = await db
+  const [row] = await db
     .select({
       id: jobs.id,
       title: jobs.title,
@@ -37,22 +37,42 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       location: jobs.location,
       deadline: jobs.deadline,
       created_at: jobs.createdAt,
-      company: {
-        id: companies.id,
-        name: companies.name,
-        logo_url: companies.logoUrl,
-        description: companies.description,
-        industry: companies.industry,
-        website: companies.website,
-      },
+      company_id: companies.id,
+      company_name: companies.name,
+      company_logo_url: companies.logoUrl,
+      company_description: companies.description,
+      company_industry: companies.industry,
+      company_website: companies.website,
     })
     .from(jobs)
     .leftJoin(companies, eq(jobs.companyId, companies.id))
     .where(eq(jobs.id, id));
 
-  if (!job) {
+  if (!row) {
     return NextResponse.json({ message: "Job not found." }, { status: 404 });
   }
+
+  const job = {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    requirements: row.requirements,
+    skills_required: row.skills_required,
+    duration: row.duration,
+    compensation: row.compensation,
+    location_type: row.location_type,
+    location: row.location,
+    deadline: row.deadline,
+    created_at: row.created_at,
+    company: {
+      id: row.company_id,
+      name: row.company_name,
+      logo_url: row.company_logo_url,
+      description: row.company_description,
+      industry: row.company_industry,
+      website: row.company_website,
+    },
+  };
 
   return NextResponse.json(job);
 }

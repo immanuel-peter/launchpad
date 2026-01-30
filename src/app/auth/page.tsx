@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { z } from "zod";
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
-const AuthPage = () => {
+const AuthPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, signUp, signIn } = useAuth();
@@ -301,6 +301,14 @@ const AuthPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const AuthPage = () => {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
   );
 };
 
