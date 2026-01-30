@@ -2,13 +2,24 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Enums
-CREATE TYPE public.user_role AS ENUM ('student', 'startup');
-CREATE TYPE public.application_status AS ENUM ('pending', 'scoring', 'reviewing', 'accepted', 'rejected');
-CREATE TYPE public.job_status AS ENUM ('draft', 'open', 'closed', 'filled');
+-- Enums (with IF NOT EXISTS check)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE public.user_role AS ENUM ('student', 'startup');
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'application_status') THEN
+    CREATE TYPE public.application_status AS ENUM ('pending', 'scoring', 'reviewing', 'accepted', 'rejected');
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'job_status') THEN
+    CREATE TYPE public.job_status AS ENUM ('draft', 'open', 'closed', 'filled');
+  END IF;
+END $$;
 
 -- Profiles
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   role public.user_role NOT NULL,
@@ -20,7 +31,7 @@ CREATE TABLE public.profiles (
 );
 
 -- Student Profiles
-CREATE TABLE public.student_profiles (
+CREATE TABLE IF NOT EXISTS public.student_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
   university TEXT,
@@ -38,7 +49,7 @@ CREATE TABLE public.student_profiles (
 );
 
 -- Companies
-CREATE TABLE public.companies (
+CREATE TABLE IF NOT EXISTS public.companies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -54,7 +65,7 @@ CREATE TABLE public.companies (
 );
 
 -- Company Workflows
-CREATE TABLE public.company_workflows (
+CREATE TABLE IF NOT EXISTS public.company_workflows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL UNIQUE REFERENCES public.companies(id) ON DELETE CASCADE,
   email_on_decision BOOLEAN DEFAULT FALSE,
@@ -65,7 +76,7 @@ CREATE TABLE public.company_workflows (
 );
 
 -- Jobs
-CREATE TABLE public.jobs (
+CREATE TABLE IF NOT EXISTS public.jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -84,7 +95,7 @@ CREATE TABLE public.jobs (
 );
 
 -- Applications
-CREATE TABLE public.applications (
+CREATE TABLE IF NOT EXISTS public.applications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id UUID NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.student_profiles(id) ON DELETE CASCADE,

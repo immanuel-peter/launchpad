@@ -12,6 +12,7 @@
         "db:migrate": "drizzle-kit migrate",
         "db:migrate:run": "bun --bun run src/db/migrate.ts",
         "db:migrate:sql": "bun --bun run src/db/migrate-sql.ts",
+        "db:migrate:all": "bun --bun run src/db/migrate-all-sql.ts",
         "worker": "bun --bun run src/queue/worker.ts"
     },
     "dependencies": {

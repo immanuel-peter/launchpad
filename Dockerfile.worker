@@ -1,0 +1,21 @@
+FROM oven/bun:1.3.6 AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
+
+FROM oven/bun:1.3.6 AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code needed for worker
+COPY package.json ./
+COPY tsconfig.json ./
+COPY src ./src
+COPY drizzle ./drizzle
+
+# Run the worker
+CMD ["bun", "--bun", "run", "src/queue/worker.ts"]

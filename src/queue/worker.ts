@@ -98,3 +98,22 @@ const worker = new Worker(
 worker.on("failed", (job, error) => {
   console.error("Scoring job failed", job?.id, error);
 });
+
+worker.on("completed", (job) => {
+  console.log("Scoring job completed", job.id);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, closing worker...");
+  await worker.close();
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  console.log("SIGINT received, closing worker...");
+  await worker.close();
+  process.exit(0);
+});
+
+console.log("Worker started, listening for jobs on queue 'application-scoring'");
