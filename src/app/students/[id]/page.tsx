@@ -111,7 +111,7 @@ const PublicStudentProfilePage = () => {
                 {profile.resume_url ? (
                   <>
                     <a
-                      href={profile.resume_url}
+                      href={`/api/student-profiles/${params.id}/resume`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
@@ -121,7 +121,7 @@ const PublicStudentProfilePage = () => {
                     </a>
                     <iframe
                       title="Resume"
-                      src={profile.resume_url}
+                      src={`/api/student-profiles/${params.id}/resume`}
                       className="w-full h-[600px] rounded-lg border border-border"
                     />
                   </>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { studentProfiles } from "@/db/schema";
-import { requireRole } from "@/lib/auth/require";
+import { requireRole, requireAuth } from "@/lib/auth/require";
 import { eq } from "drizzle-orm";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -28,6 +28,59 @@ async function getProfile(authUserId: string, paramId: string) {
   }
 
   return { profile };
+}
+
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth();
+  const { id } = await context.params;
+
+  // Get the student profile
+  const [profileRow] = await db
+    .select()
+    .from(studentProfiles)
+    .where(eq(studentProfiles.id, id));
+
+  if (!profileRow) {
+    return NextResponse.json({ message: "Student profile not found." }, { status: 404 });
+  }
+
+  // Check access permissions
+  // Students can only view their own resume, but startups/companies and unauthenticated users can view any student's resume
+  if (auth?.role === "student" && profileRow.userId !== auth.sub) {
+    return NextResponse.json({ message: "Forbidden." }, { status: 403 });
+  }
+
+  if (!profileRow.resumeUrl) {
+    return NextResponse.json({ message: "Resume not found." }, { status: 404 });
+  }
+
+  // Lazy-load storage module to avoid Turbopack static analysis of AWS SDK
+  const { extractKeyFromPublicUrl, getFileBuffer } = await import("@/lib/storage");
+
+  const key = extractKeyFromPublicUrl(profileRow.resumeUrl);
+  if (!key) {
+    return NextResponse.json({ message: "Resume URL is invalid." }, { status: 400 });
+  }
+
+  try {
+    const buffer = await getFileBuffer(key);
+    
+    // Return the PDF with proper headers for iframe embedding
+    return new NextResponse(buffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="resume.pdf"`,
+        "Cache-Control": "public, max-age=3600",
+        // CORS headers to allow iframe embedding
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching resume:", error);
+    return NextResponse.json({ message: "Failed to fetch resume." }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
