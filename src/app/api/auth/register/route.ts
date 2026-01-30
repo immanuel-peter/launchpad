@@ -4,6 +4,7 @@ import { companies, profiles, studentProfiles } from "@/db/schema";
 import { hashPassword } from "@/lib/password";
 import { signToken } from "@/lib/auth/jwt";
 import { setAuthCookie, toAuthUser } from "@/lib/auth/server";
+import { enqueueEmail } from "@/queue/email";
 import { eq } from "drizzle-orm";
 
 const serializeProfile = (profile: typeof profiles.$inferSelect) => ({
@@ -62,6 +63,23 @@ export async function POST(request: Request) {
 
     return [createdProfile];
   });
+
+  try {
+    console.log(`[Register] Enqueuing welcome email for:`, {
+      email: profile.email,
+      fullName: profile.fullName,
+      role: profile.role,
+    });
+    await enqueueEmail({
+      type: "welcome",
+      email: profile.email,
+      fullName: profile.fullName,
+      role: profile.role,
+    });
+    console.log(`[Register] Welcome email enqueued successfully`);
+  } catch (error) {
+    console.error("[Register] Failed to enqueue welcome email", error);
+  }
 
   const token = await signToken({ sub: profile.id, email: profile.email, role: profile.role });
   await setAuthCookie(token);

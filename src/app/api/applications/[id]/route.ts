@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db/index";
-import { applications, companies, jobs, studentProfiles } from "@/db/schema";
+import { applications, companies, companyWorkflows, jobs, profiles, studentProfiles } from "@/db/schema";
 import { requireAuth } from "@/lib/auth/require";
+import { enqueueEmail } from "@/queue/email";
 import { eq } from "drizzle-orm";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -101,11 +102,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const [record] = await db
     .select({
       id: applications.id,
+      status: applications.status,
       companyOwner: companies.userId,
+      companyName: companies.name,
+      jobTitle: jobs.title,
+      studentEmail: profiles.email,
+      studentName: profiles.fullName,
+      emailOnDecision: companyWorkflows.emailOnDecision,
+      acceptanceEmailBody: companyWorkflows.acceptanceEmailBody,
+      rejectionEmailBody: companyWorkflows.rejectionEmailBody,
     })
     .from(applications)
     .leftJoin(jobs, eq(applications.jobId, jobs.id))
     .leftJoin(companies, eq(jobs.companyId, companies.id))
+    .leftJoin(studentProfiles, eq(applications.studentId, studentProfiles.id))
+    .leftJoin(profiles, eq(studentProfiles.userId, profiles.id))
+    .leftJoin(companyWorkflows, eq(companies.id, companyWorkflows.companyId))
     .where(eq(applications.id, id));
 
   if (!record) {
@@ -121,6 +133,57 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     .set({ status, updatedAt: new Date() })
     .where(eq(applications.id, record.id))
     .returning();
+
+  const shouldSendDecisionEmail =
+    (status === "accepted" || status === "rejected") && status !== record.status;
+
+  console.log(`[Application PATCH] Decision email check:`, {
+    applicationId: id,
+    oldStatus: record.status,
+    newStatus: status,
+    shouldSendDecisionEmail,
+    emailOnDecision: record.emailOnDecision,
+    studentEmail: record.studentEmail || "NOT FOUND",
+    hasAcceptanceBody: !!record.acceptanceEmailBody,
+    hasRejectionBody: !!record.rejectionEmailBody,
+  });
+
+  if (shouldSendDecisionEmail && record.emailOnDecision && record.studentEmail) {
+    const companyName = record.companyName ?? "Company";
+    const jobTitle = record.jobTitle ?? "the role";
+    const studentName = record.studentName ?? "there";
+    const emailBody =
+      status === "accepted" ? record.acceptanceEmailBody ?? null : record.rejectionEmailBody ?? null;
+
+    console.log(`[Application PATCH] Enqueuing decision email:`, {
+      studentEmail: record.studentEmail,
+      studentName,
+      jobTitle,
+      companyName,
+      status,
+      hasEmailBody: !!emailBody,
+    });
+
+    try {
+      await enqueueEmail({
+        type: "decision",
+        studentEmail: record.studentEmail,
+        studentName,
+        jobTitle,
+        companyName,
+        status,
+        emailBody,
+      });
+      console.log(`[Application PATCH] Decision email enqueued successfully`);
+    } catch (error) {
+      console.error("[Application PATCH] Failed to enqueue decision email", error);
+    }
+  } else if (shouldSendDecisionEmail) {
+    console.warn(`[Application PATCH] Decision email NOT sent because:`, {
+      emailOnDecision: record.emailOnDecision ? "enabled" : "DISABLED",
+      studentEmail: record.studentEmail ? "found" : "MISSING",
+    });
+  }
 
   return NextResponse.json(updated);
 }

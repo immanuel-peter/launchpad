@@ -71,6 +71,7 @@ services:
       S3_BUCKET: launchpad
       S3_REGION: us-east-1
       S3_FORCE_PATH_STYLE: "true"
+      EMAIL_FROM: no-reply@trylaunchpad.xyz
     ports:
       - "3000:3000"
     volumes:
@@ -102,6 +103,8 @@ services:
       S3_BUCKET: launchpad
       S3_REGION: us-east-1
       S3_FORCE_PATH_STYLE: "true"
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: no-reply@trylaunchpad.xyz
     volumes:
       - ./:/app
       - /app/node_modules
