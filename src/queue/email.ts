@@ -1,29 +1,18 @@
 import { Queue } from "bullmq";
-import { redisConnection } from "@/queue/connection";
+import { getRedisConnection } from "@/queue/connection";
+import { usesRedisQueue } from "@/queue/config";
+import { processEmailJob } from "@/queue/email-processor";
+import type { EmailJobData } from "@/queue/types";
 
-export type EmailJobData =
-  | { type: "welcome"; email: string; fullName: string | null; role: "student" | "startup" }
-  | {
-      type: "new-application";
-      companyEmail: string;
-      companyName: string;
-      applicantName: string;
-      jobTitle: string;
-      score: number;
-    }
-  | {
-      type: "decision";
-      studentEmail: string;
-      studentName: string;
-      jobTitle: string;
-      companyName: string;
-      status: "accepted" | "rejected";
-      emailBody: string | null;
-    };
+let emailQueue: Queue<EmailJobData> | null = null;
 
-export const emailQueue = new Queue("email-notifications", {
-  connection: redisConnection,
-});
+function getEmailQueue() {
+  emailQueue ??= new Queue<EmailJobData>("email-notifications", {
+    connection: getRedisConnection(),
+  });
+
+  return emailQueue;
+}
 
 export async function enqueueEmail(data: EmailJobData) {
   console.log(`[Email Queue] Enqueuing ${data.type} email:`, {
@@ -38,7 +27,13 @@ export async function enqueueEmail(data: EmailJobData) {
     ...(data.type === "new-application" && { jobTitle: data.jobTitle, score: data.score }),
     ...(data.type === "decision" && { jobTitle: data.jobTitle, status: data.status }),
   });
-  const job = await emailQueue.add("send-email", data);
+
+  if (!usesRedisQueue) {
+    await processEmailJob(data);
+    return;
+  }
+
+  const job = await getEmailQueue().add("send-email", data);
   console.log(`[Email Queue] Email job enqueued with ID: ${job.id}`);
   return job;
 }

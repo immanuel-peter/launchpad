@@ -56,6 +56,7 @@ services:
       - redis
       - minio
     environment:
+      BACKGROUND_JOBS_MODE: ${BACKGROUND_JOBS_MODE:-redis}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/launchpad
       REDIS_URL: redis://redis:6379
       JWT_SECRET: change-me
@@ -88,6 +89,7 @@ services:
       - redis
       - minio
     environment:
+      BACKGROUND_JOBS_MODE: ${BACKGROUND_JOBS_MODE:-redis}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/launchpad
       REDIS_URL: redis://redis:6379
       JWT_SECRET: change-me

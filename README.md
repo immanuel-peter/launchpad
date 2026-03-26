@@ -20,7 +20,7 @@ An AI-powered platform that connects students with startups for micro-internship
 - **Semantic Matching**: Uses OpenAI embeddings (text-embedding-3-small) for semantic similarity matching
 - **Hybrid Matching**: Combines vector similarity with direct skills matching for accurate results
 - **Structured Scoring**: AI-generated scores (0-100) with detailed reasoning using OpenAI's structured output
-- **Asynchronous Processing**: Background job queue using BullMQ and Redis for scalable scoring
+- **Configurable Background Processing**: Run scoring/email jobs through BullMQ + Redis or inline via env vars
 
 ## 🛠️ Tech Stack
 
@@ -37,7 +37,7 @@ An AI-powered platform that connects students with startups for micro-internship
 - **Next.js API Routes** - Serverless API endpoints
 - **Drizzle ORM** - Type-safe database queries
 - **PostgreSQL 17** with **pgvector** - Vector database for embeddings
-- **Redis 8.0 Alpine** - Job queue backend
+- **Redis 8.0 Alpine** - Optional job queue backend
 - **BullMQ** - Job queue management
 
 ### AI & ML
@@ -80,8 +80,11 @@ Create a `.env` file in the root directory:
 # Database
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/launchpad
 
-# Redis
-REDIS_URL=redis://localhost:6379
+# Background jobs
+BACKGROUND_JOBS_MODE=inline
+
+# Redis (required only when BACKGROUND_JOBS_MODE=redis)
+# REDIS_URL=redis://localhost:6379
 
 # Authentication
 JWT_SECRET=your-secret-key-change-this-in-production
@@ -107,6 +110,8 @@ This starts:
 - Redis (port 6379)
 - Next.js app (port 3000)
 - BullMQ worker for background jobs
+
+If you set `BACKGROUND_JOBS_MODE=inline`, the app can run without Redis in production and you do not need the worker service.
 
 ### 5. Run database migrations
 
@@ -136,7 +141,7 @@ If running locally (not in Docker):
 bun --bun run worker
 ```
 
-The worker processes application scoring jobs asynchronously.
+The worker processes application scoring jobs asynchronously. It is only needed when `BACKGROUND_JOBS_MODE=redis`.
 
 ## 📁 Project Structure
 
@@ -213,8 +218,8 @@ The platform uses custom JWT authentication:
 
 ### Scoring System
 When a student applies, the system:
-1. Queues the application for scoring (BullMQ)
-2. Worker fetches student and job data
+1. Either queues the application for scoring or processes it inline based on `BACKGROUND_JOBS_MODE`
+2. Fetches student and job data
 3. Calls OpenAI API with structured output (Zod schema)
 4. Returns scores (0-100) for:
    - Skills Match
@@ -273,7 +278,8 @@ Services:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | Required |
-| `REDIS_URL` | Redis connection string | Required |
+| `BACKGROUND_JOBS_MODE` | Background job mode (`inline` or `redis`) | Optional |
+| `REDIS_URL` | Redis connection string | Required only when `BACKGROUND_JOBS_MODE=redis` |
 | `JWT_SECRET` | Secret for JWT signing | Required |
 | `OPENAI_BASE_URL` | OpenAI API base URL | `https://api.openai.com/v1` |
 | `OPENAI_API_KEY` | OpenAI API key | Required |

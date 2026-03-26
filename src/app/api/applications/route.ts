@@ -149,5 +149,7 @@ export async function POST(request: Request) {
 
   await enqueueScoring(created.id);
 
-  return NextResponse.json(created, { status: 201 });
+  const [current] = await db.select().from(applications).where(eq(applications.id, created.id));
+
+  return NextResponse.json(current ?? created, { status: 201 });
 }

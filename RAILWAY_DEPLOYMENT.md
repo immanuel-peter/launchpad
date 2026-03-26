@@ -2,6 +2,8 @@
 
 This guide explains how to deploy the BullMQ worker to Railway for processing background jobs.
 
+If you set `BACKGROUND_JOBS_MODE=inline`, do not deploy this service. The app will process scoring and emails directly without Redis.
+
 ## Prerequisites
 
 - Railway account (sign up at [railway.app](https://railway.app))
@@ -37,6 +39,7 @@ This guide explains how to deploy the BullMQ worker to Railway for processing ba
 
    ```
    DATABASE_URL=<your-neon-database-url>
+   BACKGROUND_JOBS_MODE=redis
    REDIS_URL=<your-upstash-redis-url>
    JWT_SECRET=<your-jwt-secret>
    OPENAI_BASE_URL=https://api.openai.com/v1
@@ -78,6 +81,7 @@ This guide explains how to deploy the BullMQ worker to Railway for processing ba
 5. **Set environment variables**
    ```bash
    railway variables set DATABASE_URL=<your-neon-database-url>
+   railway variables set BACKGROUND_JOBS_MODE=redis
    railway variables set REDIS_URL=<your-upstash-redis-url>
    railway variables set JWT_SECRET=<your-jwt-secret>
    railway variables set OPENAI_API_KEY=<your-openai-api-key>
@@ -94,6 +98,7 @@ This guide explains how to deploy the BullMQ worker to Railway for processing ba
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string (from Neon) | `postgresql://user:pass@host:5432/db` |
+| `BACKGROUND_JOBS_MODE` | Job execution mode for the app/worker | `redis` |
 | `REDIS_URL` | Redis connection string (from Upstash) | `redis://default:pass@host:port` |
 | `JWT_SECRET` | Secret for JWT signing (same as Vercel) | `your-secret-key` |
 | `OPENAI_BASE_URL` | OpenAI API base URL | `https://api.openai.com/v1` |

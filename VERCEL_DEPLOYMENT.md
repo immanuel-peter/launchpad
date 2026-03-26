@@ -23,9 +23,9 @@ This guide covers deploying the Next.js application to Vercel with external serv
 
 - Vercel account
 - Neon account (for PostgreSQL with pgvector)
-- Upstash account (for Redis)
+- Upstash account (only if using Redis-backed jobs)
 - Cloudflare account (for R2 storage)
-- Railway account (for worker)
+- Railway account (only if using Redis-backed jobs)
 - GitHub repository
 
 ## Step 1: Set Up External Services
@@ -41,6 +41,8 @@ This guide covers deploying the Next.js application to Vercel with external serv
 4. Copy the connection string (format: `postgresql://user:pass@host/db?sslmode=require`)
 
 ### Upstash Redis
+
+Skip this section if you plan to run with `BACKGROUND_JOBS_MODE=inline`.
 
 1. Create a new database in [Upstash Console](https://console.upstash.com)
 2. Choose a region close to your Vercel deployment
@@ -86,8 +88,11 @@ This guide covers deploying the Next.js application to Vercel with external serv
    # Database (Neon)
    DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
 
-   # Redis (Upstash)
-   REDIS_URL=redis://default:password@host:port
+   # Background jobs
+   BACKGROUND_JOBS_MODE=inline
+
+   # Redis (Upstash, only when BACKGROUND_JOBS_MODE=redis)
+   # REDIS_URL=redis://default:password@host:port
 
    # Authentication
    JWT_SECRET=your-secret-key-change-this-in-production
@@ -130,7 +135,8 @@ vercel
 
 # Set environment variables
 vercel env add DATABASE_URL
-vercel env add REDIS_URL
+vercel env add BACKGROUND_JOBS_MODE
+# Add REDIS_URL only if BACKGROUND_JOBS_MODE=redis
 # ... add all other variables
 ```
 
@@ -174,6 +180,8 @@ export async function POST(request: Request) {
 
 See [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md) for detailed instructions.
 
+This is only required when `BACKGROUND_JOBS_MODE=redis`. In `inline` mode, Vercel can handle scoring and email work directly and you can skip Railway plus Upstash entirely.
+
 **Quick Summary:**
 1. Create new Railway project
 2. Deploy using `Dockerfile.worker`
@@ -207,7 +215,7 @@ Vercel offers integrations that can simplify setup:
 - Vercel will automatically set `DATABASE_URL`
 
 ### Upstash Integration
-- Add Upstash integration
+- Add Upstash integration only if you want Redis-backed jobs
 - Vercel will automatically set `REDIS_URL`
 
 **Note**: These integrations make it easier to manage credentials, but you can also set variables manually.
@@ -217,7 +225,8 @@ Vercel offers integrations that can simplify setup:
 | Variable | Service | Required | Description |
 |----------|---------|----------|-------------|
 | `DATABASE_URL` | Neon | ✅ | PostgreSQL connection string |
-| `REDIS_URL` | Upstash | ✅ | Redis connection string |
+| `BACKGROUND_JOBS_MODE` | - | ❌ | `inline` to avoid Redis, `redis` to use BullMQ |
+| `REDIS_URL` | Upstash | Only for `redis` mode | Redis connection string |
 | `JWT_SECRET` | - | ✅ | Secret for JWT signing |
 | `OPENAI_API_KEY` | OpenAI | ✅ | OpenAI API key |
 | `OPENAI_BASE_URL` | OpenAI | ❌ | Default: `https://api.openai.com/v1` |
@@ -246,7 +255,7 @@ Vercel offers integrations that can simplify setup:
 ### Runtime Errors
 
 - **Database connection**: Verify `DATABASE_URL` is correct and includes `?sslmode=require`
-- **Redis connection**: Check `REDIS_URL` format (Upstash URLs work with ioredis)
+- **Redis connection**: Only relevant in `redis` mode; check `REDIS_URL` format if you enabled it
 - **S3 errors**: Verify R2 credentials and endpoint URL
 
 ### Worker Not Processing Jobs
@@ -255,20 +264,22 @@ Vercel offers integrations that can simplify setup:
 - Verify `REDIS_URL` matches between Vercel and Railway
 - Ensure queue name matches (`application-scoring`)
 
+If you are running in `inline` mode, skip this section entirely because there is no worker.
+
 ## Monitoring
 
 - **Vercel**: Check deployment logs, function logs, and analytics
 - **Neon**: Monitor database connections and queries
-- **Upstash**: Check Redis metrics and usage
-- **Railway**: Monitor worker logs and resource usage
+- **Upstash**: Check Redis metrics and usage only in `redis` mode
+- **Railway**: Monitor worker logs and resource usage only in `redis` mode
 
 ## Cost Optimization
 
 - **Vercel**: Free tier includes generous limits for Next.js apps
 - **Neon**: Free tier includes 0.5GB storage
-- **Upstash**: Free tier includes 10K commands/day
+- **Upstash**: Optional; only needed in `redis` mode
 - **R2**: Pay-as-you-go, very affordable
-- **Railway**: $5/month starter plan, pay-as-you-go after
+- **Railway**: Optional; only needed in `redis` mode
 
 ## Security Best Practices
 
